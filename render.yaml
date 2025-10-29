@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pathfinder-maze-visualizer
+    env: go
+    region: oregon
+    plan: free
+    buildCommand: make build
+    startCommand: ./bin/pathfinder -addr :$PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: GIN_MODE
+        value: release
+      - key: PORT
+        value: 10000
+    autoDeploy: true
+    branch: main
+    rootDir: .

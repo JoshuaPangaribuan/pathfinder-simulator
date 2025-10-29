@@ -121,6 +121,45 @@ For manual production builds:
 2. `make build-server` - Compile Go binary with embedded assets
 3. `make run` - Start the production server
 
+## Deployment
+
+### Render.com Deployment (Recommended)
+
+Deploy to Render.com for free hosting with automatic SSL and custom domains:
+
+1. **Quick Deploy:**
+   - Connect your GitHub repository to [render.com](https://render.com)
+   - Render will automatically detect the `render.yaml` configuration
+   - Your app will be live in minutes at `https://your-app.onrender.com`
+
+2. **Manual Configuration:**
+   - Service Type: Web Service
+   - Environment: Go
+   - Build Command: `make build`
+   - Start Command: `./bin/pathfinder -addr :$PORT`
+   - Environment Variables: `GIN_MODE=release`
+
+3. **Custom Domain:**
+   - Add your domain in Render dashboard
+   - Update DNS records as instructed
+   - SSL certificate automatically provisioned
+
+📖 **Quick deployment:** Connect your GitHub repo to Render.com and deploy in minutes!
+
+### Docker Deployment
+
+Build and run with Docker:
+
+```bash
+# Build Docker image
+make docker-build
+
+# Run container
+make docker-run
+```
+
+Or use the provided Dockerfile for any container platform.
+
 ## API Overview
 
 - `POST /maze/generate` – Generate a perfect maze.
