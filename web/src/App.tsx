@@ -9,7 +9,6 @@ type SelectionMode = "start" | "goal";
 
 const App = () => {
   const [selectionMode, setSelectionMode] = useState<SelectionMode>("start");
-  const [isControlPanelVisible, setIsControlPanelVisible] = useState(true);
 
   const maze = useAppStore((state) => state.maze);
   const visitedOrder = useAppStore((state) => state.visitedOrder);
@@ -68,24 +67,12 @@ const App = () => {
         </div>
       </header>
 
-      <main className="flex h-[calc(100vh-80px)] flex-col">
-        {/* Floating Control Panel */}
-        {isControlPanelVisible && (
-          <div className="absolute top-20 left-4 z-10 w-80 space-y-4">
+      <main className="h-[calc(100vh-80px)] overflow-hidden">
+        {/* Mobile: Stacked Layout, Desktop: Side-by-Side */}
+        <div className="grid h-full grid-cols-1 gap-4 p-4 lg:grid-cols-[400px_1fr] lg:gap-6 lg:p-6">
+          {/* Control Panel */}
+          <div className="order-2 flex flex-col gap-4 overflow-y-auto lg:order-1">
             <div className="rounded-xl border border-slate-800 bg-slate-950/90 backdrop-blur-sm p-4 shadow-lg">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-medium text-slate-200">Controls</h3>
-                <button
-                  type="button"
-                  onClick={() => setIsControlPanelVisible(false)}
-                  className="rounded-md p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                  title="Hide controls"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
               <ControlsPanel
                 selectionMode={selectionMode}
                 onSelectionModeChange={handleSelectionModeChange}
@@ -103,35 +90,20 @@ const App = () => {
               </ul>
             </div>
           </div>
-        )}
 
-        {/* Show Controls Button (when panel is hidden) */}
-        {!isControlPanelVisible && (
-          <button
-            type="button"
-            onClick={() => setIsControlPanelVisible(true)}
-            className="absolute top-20 left-4 z-10 rounded-xl border border-slate-800 bg-slate-950/90 backdrop-blur-sm p-3 shadow-lg hover:bg-slate-900/90"
-            title="Show controls"
-          >
-            <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-        )}
-
-        {/* Full-screen Maze */}
-        <div className="flex-1 overflow-hidden">
-          <GridCanvas
-            grid={maze}
-            visitedOrder={visitedOrder}
-            visitedCount={visitedCount}
-            path={path}
-            showPath={showPath}
-            start={start}
-            goal={goal}
-            onSelectCell={handleSelectCell}
-          />
+          {/* Maze Panel - Responsive Size */}
+          <div className="order-1 flex min-h-0 items-center justify-center lg:order-2">
+            <GridCanvas
+              grid={maze}
+              visitedOrder={visitedOrder}
+              visitedCount={visitedCount}
+              path={path}
+              showPath={showPath}
+              start={start}
+              goal={goal}
+              onSelectCell={handleSelectCell}
+            />
+          </div>
         </div>
       </main>
     </div>

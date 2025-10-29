@@ -20,15 +20,31 @@ const hexToRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const MAX_CANVAS_SIZE = 680;
 const MIN_CELL_SIZE = 4;
 const MAX_CELL_SIZE = 30;
 
-const computeCellSize = (width: number, height: number) => {
+// Calculate maximum size based on available viewport space
+const calculateMaxSize = (): number => {
+  if (typeof window === 'undefined') return 800;
+  // On desktop (lg), control panel is 400px + gaps (12px) + padding (24px on each side) = ~450px
+  // On mobile, no control panel on same row
+  const isDesktop = window.innerWidth >= 1024;
+  const controlPanelSpace = isDesktop ? 450 : 0;
+  const headerHeight = 90; // Header + padding
+  const horizontalMargins = isDesktop ? 32 : 32; // Grid padding
+
+  const availableWidth = Math.max(300, window.innerWidth - controlPanelSpace - horizontalMargins);
+  const availableHeight = Math.max(300, window.innerHeight - headerHeight - 32); // 32 for margins
+
+  // Use the smaller dimension to maintain aspect ratio and fit in viewport
+  return Math.min(availableWidth, availableHeight);
+};
+
+const computeCellSize = (width: number, height: number, maxSize: number) => {
   if (width === 0 || height === 0) {
     return MIN_CELL_SIZE;
   }
-  const ideal = Math.floor(MAX_CANVAS_SIZE / Math.max(width, height));
+  const ideal = Math.floor(maxSize / Math.max(width, height));
   return Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, ideal));
 };
 
@@ -66,7 +82,7 @@ export const GridCanvas = ({
     }
     const height = grid.length;
     const width = grid[0].length;
-    const cellSize = computeCellSize(width, height);
+    const cellSize = computeCellSize(width, height, calculateMaxSize());
     return { width, height, cellSize };
   }, [grid]);
 
@@ -387,20 +403,42 @@ export const GridCanvas = ({
   }
 
   const { width, height, cellSize } = dimensions;
-  const styleWidth = width * cellSize;
+  const canvasWidth = width * cellSize;
+  const canvasHeight = height * cellSize;
+
+  // Calculate container size maintaining aspect ratio within maxSize
+  const aspectRatio = canvasWidth / canvasHeight;
+  let containerWidth = Math.min(calculateMaxSize(), canvasWidth);
+  let containerHeight = containerWidth / aspectRatio;
+
+  if (containerHeight > calculateMaxSize()) {
+    containerHeight = calculateMaxSize();
+    containerWidth = containerHeight * aspectRatio;
+  }
 
   return (
     <div className="flex h-full w-full items-center justify-center">
-      <canvas
-        ref={canvasRef}
-        width={width * cellSize}
-        height={height * cellSize}
-        style={{ width: `${styleWidth}px`, height: `${height * cellSize}px` }}
-        className="rounded-lg border border-slate-700 bg-slate-900 shadow-lg"
-        onClick={handleCanvasClick}
-        onMouseMove={handleCanvasMouseMove}
-        onMouseLeave={handleCanvasMouseLeave}
-      />
+      <div
+        className="relative overflow-auto rounded-lg border border-slate-700 bg-slate-900 shadow-lg"
+        style={{
+          width: `${Math.min(containerWidth, window.innerWidth - 32)}px`,
+          height: `${Math.min(containerHeight, window.innerHeight - 120)}px`,
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={width * cellSize}
+          height={height * cellSize}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block'
+          }}
+          onClick={handleCanvasClick}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseLeave={handleCanvasMouseLeave}
+        />
+      </div>
     </div>
   );
 };

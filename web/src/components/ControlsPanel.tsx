@@ -201,144 +201,318 @@ export const ControlsPanel = ({
   };
 
   return (
-    <section className="flex flex-col gap-6 rounded-xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-100">Maze Controls</h2>
-        <p className="text-sm text-slate-400">Generate a perfect maze and configure the simulation.</p>
+    <section className="flex flex-col gap-4">
+      {/* Mobile: Collapsible sections */}
+      <div className="block lg:hidden space-y-2">
+        {/* Maze Generation - Collapsible */}
+        <details className="group rounded-xl border border-slate-800 bg-slate-950/70 shadow-lg">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-100 hover:bg-slate-800/50 transition-colors list-none">
+            <div className="flex items-center justify-between">
+              <span>Maze Generation</span>
+              <svg className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </summary>
+          <div className="px-4 pb-4 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1 text-xs text-slate-300">
+                Width
+                <input
+                  type="number"
+                  min={MIN_DIMENSION}
+                  max={maxDimensions.width}
+                  value={width}
+                  onChange={(event) => {
+                    const validatedValue = validateDimension(Number(event.target.value), maxDimensions.width);
+                    setWidth(validatedValue);
+                  }}
+                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-slate-300">
+                Height
+                <input
+                  type="number"
+                  min={MIN_DIMENSION}
+                  max={maxDimensions.height}
+                  value={height}
+                  onChange={(event) => {
+                    const validatedValue = validateDimension(Number(event.target.value), maxDimensions.height);
+                    setHeight(validatedValue);
+                  }}
+                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+                />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1 text-xs text-slate-300">
+              Seed (optional)
+              <input
+                type="text"
+                value={seed}
+                onChange={(event) => setSeed(event.target.value)}
+                placeholder="Random each time"
+                className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="w-full rounded-md bg-sky-500 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            >
+              {isGenerating ? "Generating…" : "Generate Maze"}
+            </button>
+          </div>
+        </details>
+
+        {/* Algorithm Settings - Collapsible */}
+        <details className="group rounded-xl border border-slate-800 bg-slate-950/70 shadow-lg">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-100 hover:bg-slate-800/50 transition-colors list-none">
+            <div className="flex items-center justify-between">
+              <span>Algorithm Settings</span>
+              <svg className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </summary>
+          <div className="px-4 pb-4 space-y-4">
+            <label className="flex flex-col gap-2 text-sm text-slate-300">
+              Algorithm
+              <select
+                value={algorithm}
+                onChange={handleAlgorithmChange}
+                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+              >
+                {Object.entries(algorithmLabel).map(([key, label]) => (
+                  <option key={key} value={key}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-col gap-2">
+              <span className="text-sm text-slate-300">Animation Speed ({animationSpeed} ms)</span>
+              <input
+                type="range"
+                min={5}
+                max={400}
+                step={5}
+                value={animationSpeed}
+                onChange={handleAnimationSpeedChange}
+                className="accent-sky-500"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleRun}
+              disabled={!canRun || isRunning}
+              className="w-full rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            >
+              {isRunning ? "Running…" : "Run Pathfinding"}
+            </button>
+          </div>
+        </details>
+
+        {/* Cell Selection - Collapsible */}
+        <details className="group rounded-xl border border-slate-800 bg-slate-950/70 shadow-lg">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-100 hover:bg-slate-800/50 transition-colors list-none">
+            <div className="flex items-center justify-between">
+              <span>Cell Selection</span>
+              <svg className="h-4 w-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </summary>
+          <div className="px-4 pb-4 space-y-3">
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSelectionModeToggle("start")}
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-medium ${
+                    selectionMode === "start"
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+                      : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                  }`}
+                >
+                  Set Start
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSelectionModeToggle("goal")}
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-medium ${
+                    selectionMode === "goal"
+                      ? "border-rose-500 bg-rose-500/10 text-rose-300"
+                      : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+                  }`}
+                >
+                  Set Goal
+                </button>
+              </div>
+              <div className="text-center text-xs text-slate-400">
+                Start: {start ? `(${start.x}, ${start.y})` : "--"} | Goal: {goal ? `(${goal.x}, ${goal.y})` : "--"}
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-slate-300">
-          Width (cells)
-          <input
-            type="number"
-            min={MIN_DIMENSION}
-            max={maxDimensions.width}
-            value={width}
-            onChange={(event) => {
-              const validatedValue = validateDimension(Number(event.target.value), maxDimensions.width);
-              setWidth(validatedValue);
-            }}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-          />
-          <span className="text-xs text-slate-500">Max: {maxDimensions.width}</span>
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-300">
-          Height (cells)
-          <input
-            type="number"
-            min={MIN_DIMENSION}
-            max={maxDimensions.height}
-            value={height}
-            onChange={(event) => {
-              const validatedValue = validateDimension(Number(event.target.value), maxDimensions.height);
-              setHeight(validatedValue);
-            }}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-          />
-          <span className="text-xs text-slate-500">Max: {maxDimensions.height}</span>
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-300">
-          Seed (optional)
-          <input
-            type="text"
-            value={seed}
-            onChange={(event) => setSeed(event.target.value)}
-            placeholder="Random each time"
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-          />
-        </label>
-        <label className="flex flex-col gap-2 text-sm text-slate-300">
-          Algorithm
-          <select
-            value={algorithm}
-            onChange={handleAlgorithmChange}
-            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-          >
-            {Object.entries(algorithmLabel).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <span className="text-sm text-slate-300">Animation Speed ({animationSpeed} ms)</span>
-        <input
-          type="range"
-          min={5}
-          max={400}
-          step={5}
-          value={animationSpeed}
-          onChange={handleAnimationSpeedChange}
-          className="accent-sky-500"
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={handleSelectionModeToggle("start")}
-          className={`rounded-md border px-4 py-2 text-sm font-medium ${
-            selectionMode === "start"
-              ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-              : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-          }`}
-        >
-          Set Start
-        </button>
-        <button
-          type="button"
-          onClick={handleSelectionModeToggle("goal")}
-          className={`rounded-md border px-4 py-2 text-sm font-medium ${
-            selectionMode === "goal"
-              ? "border-rose-500 bg-rose-500/10 text-rose-300"
-              : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-          }`}
-        >
-          Set Goal
-        </button>
-        <div className="ml-auto flex flex-wrap items-center gap-2 text-xs text-slate-400">
-          <span>
-            Start: {start ? `(${start.x}, ${start.y})` : "--"}
-          </span>
-          <span className="text-slate-600">|</span>
-          <span>
-            Goal: {goal ? `(${goal.x}, ${goal.y})` : "--"}
-          </span>
+      {/* Desktop: Expanded layout */}
+      <div className="hidden lg:block rounded-xl border border-slate-800 bg-slate-950/70 p-6 shadow-lg">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-100">Maze Controls</h2>
+          <p className="text-sm text-slate-400">Generate a perfect maze and configure the simulation.</p>
         </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            Width (cells)
+            <input
+              type="number"
+              min={MIN_DIMENSION}
+              max={maxDimensions.width}
+              value={width}
+              onChange={(event) => {
+                const validatedValue = validateDimension(Number(event.target.value), maxDimensions.width);
+                setWidth(validatedValue);
+              }}
+              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+            />
+            <span className="text-xs text-slate-500">Max: {maxDimensions.width}</span>
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            Height (cells)
+            <input
+              type="number"
+              min={MIN_DIMENSION}
+              max={maxDimensions.height}
+              value={height}
+              onChange={(event) => {
+                const validatedValue = validateDimension(Number(event.target.value), maxDimensions.height);
+                setHeight(validatedValue);
+              }}
+              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+            />
+            <span className="text-xs text-slate-500">Max: {maxDimensions.height}</span>
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            Seed (optional)
+            <input
+              type="text"
+              value={seed}
+              onChange={(event) => setSeed(event.target.value)}
+              placeholder="Random each time"
+              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+            />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-300">
+            Algorithm
+            <select
+              value={algorithm}
+              onChange={handleAlgorithmChange}
+              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
+            >
+              {Object.entries(algorithmLabel).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3">
+          <span className="text-sm text-slate-300">Animation Speed ({animationSpeed} ms)</span>
+          <input
+            type="range"
+            min={5}
+            max={400}
+            step={5}
+            value={animationSpeed}
+            onChange={handleAnimationSpeedChange}
+            className="accent-sky-500"
+          />
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleSelectionModeToggle("start")}
+            className={`rounded-md border px-4 py-2 text-sm font-medium ${
+              selectionMode === "start"
+                ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
+                : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+            }`}
+          >
+            Set Start
+          </button>
+          <button
+            type="button"
+            onClick={handleSelectionModeToggle("goal")}
+            className={`rounded-md border px-4 py-2 text-sm font-medium ${
+              selectionMode === "goal"
+                ? "border-rose-500 bg-rose-500/10 text-rose-300"
+                : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
+            }`}
+          >
+            Set Goal
+          </button>
+          <div className="ml-auto flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <span>
+              Start: {start ? `(${start.x}, ${start.y})` : "--"}
+            </span>
+            <span className="text-slate-600">|</span>
+            <span>
+              Goal: {goal ? `(${goal.x}, ${goal.y})` : "--"}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          >
+            {isGenerating ? "Generating…" : "Generate Maze"}
+          </button>
+          <button
+            type="button"
+            onClick={handleRun}
+            disabled={!canRun || isRunning}
+            className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+          >
+            {isRunning ? "Running…" : "Run Pathfinding"}
+          </button>
+        </div>
+
+        {(error || successMessage) && (
+          <div
+            className={`mt-4 rounded-md border px-3 py-2 text-sm ${
+              error
+                ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+            }`}
+          >
+            {error ?? successMessage}
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-        >
-          {isGenerating ? "Generating…" : "Generate Maze"}
-        </button>
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={!canRun || isRunning}
-          className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-        >
-          {isRunning ? "Running…" : "Run Pathfinding"}
-        </button>
-      </div>
-
+      {/* Status messages for mobile */}
       {(error || successMessage) && (
-        <div
-          className={`rounded-md border px-3 py-2 text-sm ${
-            error
-              ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
-              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-          }`}
-        >
-          {error ?? successMessage}
+        <div className="lg:hidden rounded-xl border border-slate-800 bg-slate-950/70 p-4 shadow-lg">
+          <div
+            className={`rounded-md border px-3 py-2 text-sm ${
+              error
+                ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+            }`}
+          >
+            {error ?? successMessage}
+          </div>
         </div>
       )}
     </section>
