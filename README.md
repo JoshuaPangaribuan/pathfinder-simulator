@@ -6,6 +6,8 @@
 
 ![Pathfinder & Maze Visualizer](image.png)
 
+**Live Demo:** https://pathfinder-simulator.onrender.com/
+
 An interactive playground for generating perfect mazes and visualising classical pathfinding algorithms (BFS, DFS, and A*). The backend is written in Go, the frontend in React + TypeScript with Vite, and production builds bundle the UI directly into the Go binary via `embed`.
 
 ## Quick Start
