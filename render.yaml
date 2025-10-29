@@ -1,17 +1,15 @@
+# Exported from Render on 2025-10-30T03:20:01Z
+version: "1"
 services:
-  - type: web
-    name: pathfinder-maze-visualizer
-    env: go
-    region: oregon
-    plan: free
-    buildCommand: make build
-    startCommand: ./bin/pathfinder -addr :$PORT
-    healthCheckPath: /healthz
-    envVars:
-      - key: GIN_MODE
-        value: release
-      - key: PORT
-        value: 10000
-    autoDeploy: true
-    branch: main
-    rootDir: .
+- type: web
+  name: pathfinder-simulator
+  runtime: docker
+  repo: https://github.com/JoshuaPangaribuan/pathfinder-simulator
+  plan: free
+  envVars:
+  - key: GIN_MODE
+    sync: false
+  region: singapore
+  dockerContext: .
+  dockerfilePath: ./Dockerfile
+  autoDeployTrigger: commit
