@@ -4,6 +4,8 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://reactjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org)
 
+![Pathfinder & Maze Visualizer](image.png)
+
 An interactive playground for generating perfect mazes and visualising classical pathfinding algorithms (BFS, DFS, and A*). The backend is written in Go, the frontend in React + TypeScript with Vite, and production builds bundle the UI directly into the Go binary via `embed`.
 
 ## Quick Start
