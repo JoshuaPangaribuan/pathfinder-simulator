@@ -68,10 +68,10 @@ const App = () => {
       </header>
 
       <main className="h-[calc(100vh-80px)] overflow-hidden">
-        {/* Mobile: Stacked Layout, Desktop: Side-by-Side */}
-        <div className="grid h-full grid-cols-1 gap-4 p-4 lg:grid-cols-[400px_1fr] lg:gap-6 lg:p-6">
-          {/* Control Panel */}
-          <div className="order-2 flex flex-col gap-4 overflow-y-auto lg:order-1">
+        {/* Mobile: Stacked Layout (30% control, 70% maze), Desktop: Side-by-Side */}
+        <div className="grid h-full grid-cols-1 gap-0 md:grid-cols-[30%_1fr]">
+          {/* Control Panel - 30% width on desktop, 30% height on mobile */}
+          <div className="order-2 flex flex-col gap-3 overflow-y-auto md:order-1 h-[30%] md:h-full md:gap-4 md:overflow-x-hidden md:p-4">
             <div className="rounded-xl border border-slate-800 bg-slate-950/90 backdrop-blur-sm p-4 shadow-lg">
               <ControlsPanel
                 selectionMode={selectionMode}
@@ -91,8 +91,8 @@ const App = () => {
             </div>
           </div>
 
-          {/* Maze Panel - Responsive Size */}
-          <div className="order-1 flex min-h-0 items-center justify-center lg:order-2">
+          {/* Maze Panel - 70% width on desktop, 70% height on mobile */}
+          <div className="order-1 h-[70%] flex min-h-0 items-center justify-center md:order-2 md:h-full md:p-4">
             <GridCanvas
               grid={maze}
               visitedOrder={visitedOrder}

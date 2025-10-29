@@ -20,34 +20,6 @@ const hexToRgba = (hex: string, alpha: number) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
-const MIN_CELL_SIZE = 4;
-const MAX_CELL_SIZE = 30;
-
-// Calculate maximum size based on available viewport space
-const calculateMaxSize = (): number => {
-  if (typeof window === 'undefined') return 800;
-  // On desktop (lg), control panel is 400px + gaps (12px) + padding (24px on each side) = ~450px
-  // On mobile, no control panel on same row
-  const isDesktop = window.innerWidth >= 1024;
-  const controlPanelSpace = isDesktop ? 450 : 0;
-  const headerHeight = 90; // Header + padding
-  const horizontalMargins = isDesktop ? 32 : 32; // Grid padding
-
-  const availableWidth = Math.max(300, window.innerWidth - controlPanelSpace - horizontalMargins);
-  const availableHeight = Math.max(300, window.innerHeight - headerHeight - 32); // 32 for margins
-
-  // Use the smaller dimension to maintain aspect ratio and fit in viewport
-  return Math.min(availableWidth, availableHeight);
-};
-
-const computeCellSize = (width: number, height: number, maxSize: number) => {
-  if (width === 0 || height === 0) {
-    return MIN_CELL_SIZE;
-  }
-  const ideal = Math.floor(maxSize / Math.max(width, height));
-  return Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, ideal));
-};
-
 interface GridCanvasProps {
   grid: Grid | null;
   visitedOrder: Point[];
@@ -70,21 +42,55 @@ export const GridCanvas = ({
   onSelectCell,
 }: GridCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
-  const cellSizeRef = useRef<number>(MIN_CELL_SIZE);
+  const cellGeometryRef = useRef({
+    width: 1,
+    height: 1,
+    containerWidth: 1,
+    containerHeight: 1,
+  });
   const dprRef = useRef<number>(1);
   const prevVisitedCountRef = useRef<number>(0);
   const [hoveredCell, setHoveredCell] = useState<Point | null>(null);
+  const [resizeVersion, setResizeVersion] = useState(0);
 
   const dimensions = useMemo(() => {
     if (!grid || grid.length === 0) {
-      return { width: 0, height: 0, cellSize: MIN_CELL_SIZE };
+      return {
+        width: 0,
+        height: 0,
+        cellWidth: 1,
+        cellHeight: 1,
+        containerWidth: 0,
+        containerHeight: 0,
+      };
     }
     const height = grid.length;
     const width = grid[0].length;
-    const cellSize = computeCellSize(width, height, calculateMaxSize());
-    return { width, height, cellSize };
-  }, [grid]);
+
+    const container = containerRef.current;
+    let containerWidth = 800;
+    let containerHeight = 600;
+
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      containerWidth = Math.max(1, rect.width);
+      containerHeight = Math.max(1, rect.height);
+    }
+
+    const cellWidth = containerWidth / width;
+    const cellHeight = containerHeight / height;
+
+    return {
+      width,
+      height,
+      cellWidth,
+      cellHeight,
+      containerWidth,
+      containerHeight,
+    };
+  }, [grid, resizeVersion]);
 
   const resetCanvas = useCallback(() => {
     if (!grid) {
@@ -95,15 +101,20 @@ export const GridCanvas = ({
       return;
     }
 
-    const { width, height, cellSize } = dimensions;
+    const { width, height, cellWidth, cellHeight, containerWidth, containerHeight } = dimensions;
     const dpr = window.devicePixelRatio || 1;
     dprRef.current = dpr;
-    cellSizeRef.current = cellSize;
+    cellGeometryRef.current = {
+      width: cellWidth,
+      height: cellHeight,
+      containerWidth,
+      containerHeight,
+    };
 
-    canvas.width = width * cellSize * dpr;
-    canvas.height = height * cellSize * dpr;
-    canvas.style.width = `${width * cellSize}px`;
-    canvas.style.height = `${height * cellSize}px`;
+    canvas.width = containerWidth * dpr;
+    canvas.height = containerHeight * dpr;
+    canvas.style.width = "100%";
+    canvas.style.height = "100%";
 
     const context = canvas.getContext("2d");
     if (!context) {
@@ -120,13 +131,18 @@ export const GridCanvas = ({
     context.save();
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.fillStyle = COLORS.wall;
-    context.fillRect(0, 0, width * cellSize, height * cellSize);
+    context.fillRect(0, 0, containerWidth, containerHeight);
 
     context.fillStyle = COLORS.space;
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         if (grid[y][x] === 0) {
-          context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+          context.fillRect(
+            x * cellWidth,
+            y * cellHeight,
+            cellWidth,
+            cellHeight,
+          );
         }
       }
     }
@@ -139,7 +155,7 @@ export const GridCanvas = ({
       return;
     }
     const total = visitedOrder.length || 1;
-    const cellSize = cellSizeRef.current;
+    const { width: cellWidth, height: cellHeight } = cellGeometryRef.current;
     const dpr = dprRef.current;
 
     context.save();
@@ -151,7 +167,12 @@ export const GridCanvas = ({
       }
       const intensity = 0.15 + (index / total) * 0.65;
       context.fillStyle = hexToRgba(COLORS.visited, Math.min(0.85, intensity));
-      context.fillRect(point.x * cellSize, point.y * cellSize, cellSize, cellSize);
+      context.fillRect(
+        point.x * cellWidth,
+        point.y * cellHeight,
+        cellWidth,
+        cellHeight,
+      );
     }
     context.restore();
   }, [visitedOrder]);
@@ -161,20 +182,22 @@ export const GridCanvas = ({
     if (!context || !showPath || path.length === 0) {
       return;
     }
-    const cellSize = cellSizeRef.current;
+    const { width: cellWidth, height: cellHeight } = cellGeometryRef.current;
     const dpr = dprRef.current;
-    const inset = Math.max(1, Math.floor(cellSize * 0.25));
-    const size = Math.max(1, cellSize - inset * 2);
+    const insetX = Math.max(1, cellWidth * 0.25);
+    const insetY = Math.max(1, cellHeight * 0.25);
+    const sizeX = Math.max(1, cellWidth - insetX * 2);
+    const sizeY = Math.max(1, cellHeight - insetY * 2);
 
     context.save();
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     context.fillStyle = hexToRgba(COLORS.path, 0.9);
     path.forEach((point) => {
       context.fillRect(
-        point.x * cellSize + inset,
-        point.y * cellSize + inset,
-        size,
-        size,
+        point.x * cellWidth + insetX,
+        point.y * cellHeight + insetY,
+        sizeX,
+        sizeY,
       );
     });
     context.restore();
@@ -185,20 +208,20 @@ export const GridCanvas = ({
     if (!context) {
       return;
     }
-    const cellSize = cellSizeRef.current;
+    const { width: cellWidth, height: cellHeight } = cellGeometryRef.current;
     const dpr = dprRef.current;
-    const radius = cellSize * 0.35;
+    const radius = Math.min(cellWidth, cellHeight) * 0.35;
 
     context.save();
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
-    context.lineWidth = Math.max(1, cellSize * 0.1);
+    context.lineWidth = Math.max(1, Math.min(cellWidth, cellHeight) * 0.1);
 
     if (start) {
       context.fillStyle = COLORS.start;
       context.beginPath();
       context.arc(
-        start.x * cellSize + cellSize / 2,
-        start.y * cellSize + cellSize / 2,
+        start.x * cellWidth + cellWidth / 2,
+        start.y * cellHeight + cellHeight / 2,
         radius,
         0,
         Math.PI * 2,
@@ -210,8 +233,8 @@ export const GridCanvas = ({
       context.fillStyle = COLORS.goal;
       context.beginPath();
       context.arc(
-        goal.x * cellSize + cellSize / 2,
-        goal.y * cellSize + cellSize / 2,
+        goal.x * cellWidth + cellWidth / 2,
+        goal.y * cellHeight + cellHeight / 2,
         radius,
         0,
         Math.PI * 2,
@@ -233,32 +256,34 @@ export const GridCanvas = ({
       return;
     }
 
-    const cellSize = cellSizeRef.current;
+    const { width: cellWidth, height: cellHeight } = cellGeometryRef.current;
     const dpr = dprRef.current;
 
     context.save();
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     // Draw shadow/box effect
-    const inset = Math.max(1, Math.floor(cellSize * 0.1));
-    const shadowSize = Math.max(1, Math.floor(cellSize * 0.05));
+    const insetX = Math.max(1, cellWidth * 0.1);
+    const insetY = Math.max(1, cellHeight * 0.1);
+    const shadowSizeX = Math.max(1, cellWidth * 0.05);
+    const shadowSizeY = Math.max(1, cellHeight * 0.05);
 
     // Draw outer shadow
     context.fillStyle = hexToRgba("#ffffff", 0.2);
     context.fillRect(
-      hoveredCell.x * cellSize - shadowSize,
-      hoveredCell.y * cellSize - shadowSize,
-      cellSize + shadowSize * 2,
-      cellSize + shadowSize * 2,
+      hoveredCell.x * cellWidth - shadowSizeX,
+      hoveredCell.y * cellHeight - shadowSizeY,
+      cellWidth + shadowSizeX * 2,
+      cellHeight + shadowSizeY * 2,
     );
 
     // Draw inner highlight
     context.fillStyle = hexToRgba("#ffffff", 0.1);
     context.fillRect(
-      hoveredCell.x * cellSize + inset,
-      hoveredCell.y * cellSize + inset,
-      cellSize - inset * 2,
-      cellSize - inset * 2,
+      hoveredCell.x * cellWidth + insetX,
+      hoveredCell.y * cellHeight + insetY,
+      cellWidth - insetX * 2,
+      cellHeight - insetY * 2,
     );
 
     context.restore();
@@ -292,6 +317,20 @@ export const GridCanvas = ({
     }
     redrawAll();
   }, [grid, redrawAll]);
+
+  // Listen for container resize
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Trigger a re-render by updating the trigger state
+      setResizeVersion(prev => prev + 1);
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!grid) {
@@ -334,7 +373,7 @@ export const GridCanvas = ({
     }
 
     const rect = canvas.getBoundingClientRect();
-    const cellSize = cellSizeRef.current;
+    const { width: cellWidth, height: cellHeight, containerWidth, containerHeight } = cellGeometryRef.current;
     const scaleX = canvas.width / (rect.width || 1);
     const scaleY = canvas.height / (rect.height || 1);
     const dpr = dprRef.current;
@@ -342,8 +381,12 @@ export const GridCanvas = ({
     const offsetX = (event.clientX - rect.left) * (scaleX / dpr);
     const offsetY = (event.clientY - rect.top) * (scaleY / dpr);
 
-    const x = Math.floor(offsetX / cellSize);
-    const y = Math.floor(offsetY / cellSize);
+    if (offsetX < 0 || offsetY < 0 || offsetX >= containerWidth || offsetY >= containerHeight) {
+      return;
+    }
+
+    const x = Math.floor(offsetX / cellWidth);
+    const y = Math.floor(offsetY / cellHeight);
 
     if (y < 0 || y >= grid.length || x < 0 || x >= grid[0].length) {
       return;
@@ -365,7 +408,7 @@ export const GridCanvas = ({
     }
 
     const rect = canvas.getBoundingClientRect();
-    const cellSize = cellSizeRef.current;
+    const { width: cellWidth, height: cellHeight, containerWidth, containerHeight } = cellGeometryRef.current;
     const scaleX = canvas.width / (rect.width || 1);
     const scaleY = canvas.height / (rect.height || 1);
     const dpr = dprRef.current;
@@ -373,8 +416,12 @@ export const GridCanvas = ({
     const offsetX = (event.clientX - rect.left) * (scaleX / dpr);
     const offsetY = (event.clientY - rect.top) * (scaleY / dpr);
 
-    const x = Math.floor(offsetX / cellSize);
-    const y = Math.floor(offsetY / cellSize);
+    if (offsetX < 0 || offsetY < 0 || offsetX >= containerWidth || offsetY >= containerHeight) {
+      return null;
+    }
+
+    const x = Math.floor(offsetX / cellWidth);
+    const y = Math.floor(offsetY / cellHeight);
 
     if (y < 0 || y >= grid.length || x < 0 || x >= grid[0].length) {
       return null;
@@ -402,37 +449,26 @@ export const GridCanvas = ({
     return renderFallback();
   }
 
-  const { width, height, cellSize } = dimensions;
-  const canvasWidth = width * cellSize;
-  const canvasHeight = height * cellSize;
-
-  // Calculate container size maintaining aspect ratio within maxSize
-  const aspectRatio = canvasWidth / canvasHeight;
-  let containerWidth = Math.min(calculateMaxSize(), canvasWidth);
-  let containerHeight = containerWidth / aspectRatio;
-
-  if (containerHeight > calculateMaxSize()) {
-    containerHeight = calculateMaxSize();
-    containerWidth = containerHeight * aspectRatio;
-  }
+  const { containerWidth, containerHeight } = dimensions;
 
   return (
     <div className="flex h-full w-full items-center justify-center">
       <div
-        className="relative overflow-auto rounded-lg border border-slate-700 bg-slate-900 shadow-lg"
+        ref={containerRef}
+        className="relative overflow-hidden rounded-lg border border-slate-700 bg-slate-900 shadow-lg"
         style={{
-          width: `${Math.min(containerWidth, window.innerWidth - 32)}px`,
-          height: `${Math.min(containerHeight, window.innerHeight - 120)}px`,
+          width: "100%",
+          height: "100%",
         }}
       >
         <canvas
           ref={canvasRef}
-          width={width * cellSize}
-          height={height * cellSize}
+          width={containerWidth}
+          height={containerHeight}
           style={{
-            width: '100%',
-            height: '100%',
-            display: 'block'
+            width: "100%",
+            height: "100%",
+            display: "block",
           }}
           onClick={handleCanvasClick}
           onMouseMove={handleCanvasMouseMove}
