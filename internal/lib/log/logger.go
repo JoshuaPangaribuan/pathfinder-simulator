@@ -21,7 +21,7 @@ const (
 // Field represents a log field
 type Field struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
 // String creates a string field
@@ -60,13 +60,12 @@ type Logger interface {
 // NoOpLogger is a no-op logger implementation
 type NoOpLogger struct{}
 
-func (n *NoOpLogger) Debug(ctx context.Context, msg string, fields ...Field) {}
-func (n *NoOpLogger) Info(ctx context.Context, msg string, fields ...Field)  {}
-func (n *NoOpLogger) Warn(ctx context.Context, msg string, fields ...Field)  {}
+func (n *NoOpLogger) Debug(ctx context.Context, msg string, fields ...Field)            {}
+func (n *NoOpLogger) Info(ctx context.Context, msg string, fields ...Field)             {}
+func (n *NoOpLogger) Warn(ctx context.Context, msg string, fields ...Field)             {}
 func (n *NoOpLogger) Error(ctx context.Context, msg string, err error, fields ...Field) {}
 
 // NewNoOpLogger creates a no-op logger
 func NewNoOpLogger() Logger {
 	return &NoOpLogger{}
 }
-

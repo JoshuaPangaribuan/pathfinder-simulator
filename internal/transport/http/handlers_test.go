@@ -52,7 +52,7 @@ func TestHandler_GenerateMaze_Success(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"width":  10,
 		"height": 10,
 	}
@@ -75,7 +75,7 @@ func TestHandler_GenerateMaze_ValidationError(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"width":  1, // Too small
 		"height": 10,
 	}
@@ -100,7 +100,7 @@ func TestHandler_GenerateMaze_InvalidDimensions(t *testing.T) {
 	// so invalid dimensions (< 2) are caught by validation
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"width":  1,
 		"height": 1,
 	}
@@ -147,7 +147,7 @@ func TestHandler_Simulate_Success(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"algorithm": "bfs",
 		"grid":      grid,
 		"start":     start,
@@ -195,7 +195,7 @@ func TestHandler_Simulate_NoPath(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"algorithm": "bfs",
 		"grid":      grid,
 		"start":     start,
@@ -220,7 +220,7 @@ func TestHandler_Simulate_ValidationError(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"algorithm": "invalid",
 		"grid":      maze.Grid{},
 		"start":     maze.Point{X: 0, Y: 0},
@@ -255,7 +255,7 @@ func TestHandler_Simulate_UnknownAlgorithm(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"algorithm": "invalid",
 		"grid":      grid,
 		"start":     maze.Point{X: 0, Y: 0},
@@ -292,7 +292,7 @@ func TestHandler_Simulate_OutOfBounds(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"algorithm": "bfs",
 		"grid":      grid,
 		"start":     start,
@@ -329,7 +329,7 @@ func TestHandler_Simulate_Blocked(t *testing.T) {
 
 	router := setupTestRouter(handler)
 
-	reqBody := map[string]interface{}{
+	reqBody := map[string]any{
 		"algorithm": "bfs",
 		"grid":      grid,
 		"start":     start,
