@@ -1,5 +1,4 @@
 import { useAppStore } from "@/store/useAppStore";
-import type { Point } from "@/types";
 
 type SelectionMode = "start" | "goal";
 

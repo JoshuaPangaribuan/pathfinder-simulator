@@ -105,7 +105,7 @@ export const ControlsPanel = ({
     try {
       await generateMaze(payload);
       setSuccessMessage("Maze generated successfully");
-    } catch (err) {
+    } catch {
       // Error already handled in service hook
       setError(mazeError);
     }
@@ -144,7 +144,7 @@ export const ControlsPanel = ({
         );
         onRunComplete?.(result.result.found);
       }
-    } catch (err) {
+    } catch {
       // Error already handled in service hook
       setError(simError);
       onRunComplete?.(false);

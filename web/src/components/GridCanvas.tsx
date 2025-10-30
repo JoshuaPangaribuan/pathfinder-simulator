@@ -90,6 +90,7 @@ export const GridCanvas = ({
       containerWidth,
       containerHeight,
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grid, resizeVersion]);
 
   const resetCanvas = useCallback(() => {

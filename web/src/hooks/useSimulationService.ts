@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef } from "react";
 import { simulate as simulateAPI } from "@/api";
 import { useAppStore } from "@/store/useAppStore";
-import type { SimulateRequest, Algorithm } from "@/types";
+import type { SimulateRequest } from "@/types";
 
 export interface UseSimulationServiceReturn {
   runSimulation: (request: SimulateRequest) => Promise<void>;

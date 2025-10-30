@@ -1,6 +1,4 @@
-import { useCallback } from "react";
 import { DimensionInput, SeedInput } from "@/components/forms";
-import type { GenerateMazeRequest } from "@/types";
 
 interface MazeGeneratorProps {
   width: number;
