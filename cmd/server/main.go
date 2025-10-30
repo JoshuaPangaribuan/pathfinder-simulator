@@ -9,6 +9,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/JoshuaPangaribuan/pathfinder/internal/maze"
+	"github.com/JoshuaPangaribuan/pathfinder/internal/service"
+	"github.com/JoshuaPangaribuan/pathfinder/internal/simulation"
 	httptransport "github.com/JoshuaPangaribuan/pathfinder/internal/transport/http"
 	"github.com/JoshuaPangaribuan/pathfinder/web"
 )
@@ -18,19 +21,22 @@ func main() {
 	dev := flag.Bool("dev", false, "run in development mode (no embedded assets)")
 	flag.Parse()
 
+	handler, err := setupDependencies()
+	if err != nil {
+		log.Fatalf("failed to setup dependencies: %v", err)
+	}
+
 	router := gin.New()
 	httptransport.UseStandardMiddleware(router, *dev)
 
 	if *dev {
 		// Development mode: register API routes only
-		handler := httptransport.NewHandler()
 		handler.Register(router)
 		router.NoRoute(func(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		})
 	} else {
 		// Production mode: register API routes first, then static files
-		handler := httptransport.NewHandler()
 		handler.Register(router)
 
 		if err := attachEmbeddedFrontend(router); err != nil {
@@ -45,6 +51,21 @@ func main() {
 	if err := router.Run(*addr); err != nil {
 		log.Fatalf("server exited: %v", err)
 	}
+}
+
+func setupDependencies() (*httptransport.Handler, error) {
+	// Initialize core domain services
+	mazeGen := maze.NewGenerator()
+	simRunner := simulation.NewRunner()
+
+	// Initialize service layer
+	mazeService := service.NewMazeService(mazeGen)
+	simService := service.NewSimulationService(simRunner)
+
+	// Initialize handlers with services
+	handler := httptransport.NewHandler(mazeService, simService)
+
+	return handler, nil
 }
 
 func attachEmbeddedFrontend(router *gin.Engine) error {

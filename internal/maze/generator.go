@@ -1,6 +1,7 @@
 package maze
 
 import (
+	"context"
 	"errors"
 	"math/rand"
 	"time"
@@ -11,6 +12,21 @@ var (
 	ErrInvalidDimensions = errors.New("maze dimensions must be at least 2x2")
 )
 
+// Generator defines the interface for maze generation services
+type Generator interface {
+	Generate(ctx context.Context, width, height int, seed *int64) (GenerateResult, error)
+}
+
+// DefaultGenerator implements Generator using recursive backtracker
+type DefaultGenerator struct {
+	// Future: can add logger, metrics, etc.
+}
+
+// NewGenerator creates a new default maze generator
+func NewGenerator() Generator {
+	return &DefaultGenerator{}
+}
+
 type cell struct {
 	x int
 	y int
@@ -19,7 +35,11 @@ type cell struct {
 // Generate constructs a perfect maze using the Recursive Backtracker algorithm.
 // The resulting grid has dimensions (height*2+1) x (width*2+1) to encode walls
 // and passages explicitly. If seed is nil, the generator uses the current time.
-func Generate(width, height int, seed *int64) (GenerateResult, error) {
+func (g *DefaultGenerator) Generate(ctx context.Context, width, height int, seed *int64) (GenerateResult, error) {
+	// Check context cancellation
+	if err := ctx.Err(); err != nil {
+		return GenerateResult{}, err
+	}
 	if width < 2 || height < 2 {
 		return GenerateResult{}, ErrInvalidDimensions
 	}
@@ -51,6 +71,11 @@ func Generate(width, height int, seed *int64) (GenerateResult, error) {
 	carveCell(grid, 0, 0)
 
 	for len(stack) > 0 {
+		// Check context cancellation periodically in long-running operations
+		if err := ctx.Err(); err != nil {
+			return GenerateResult{}, err
+		}
+
 		current := stack[len(stack)-1]
 		neighbors := availableNeighbors(current, visited, width, height)
 
