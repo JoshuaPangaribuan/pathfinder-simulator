@@ -65,7 +65,16 @@ internal/algorithm/        # BFS, DFS, and A* implementations
 internal/simulation/       # Algorithm orchestration and timing
 internal/transport/http/   # HTTP handlers and routing
 web/                       # Frontend source (React + Vite)
+  ├── src/
+  │   ├── api/            # API client and request functions
+  │   ├── components/      # React UI components
+  │   ├── hooks/           # Custom React hooks for services and animation
+  │   ├── store/           # Zustand state management
+  │   └── types/           # TypeScript type definitions
+  └── README.md            # Detailed frontend documentation
 ```
+
+📖 **Frontend Documentation:** See [`web/README.md`](web/README.md) for detailed information about the frontend architecture, component structure, data flow, and development workflow.
 
 ## Prerequisites
 
@@ -168,7 +177,9 @@ Or use the provided Dockerfile for any container platform.
 - `POST /simulate` – Run a pathfinding algorithm on a maze grid.
 - `GET /healthz` – Simple health check.
 
-Request/response schemas are mirrored on the frontend in `src/types` for type safety.
+Request/response schemas are mirrored on the frontend in `web/src/types` for type safety.
+
+For detailed frontend architecture and implementation details, see [`web/README.md`](web/README.md).
 
 ## Troubleshooting
 

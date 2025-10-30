@@ -39,6 +39,11 @@ func Int64(key string, value int64) Field {
 	return Field{Key: key, Value: value}
 }
 
+// Bool creates a bool field
+func Bool(key string, value bool) Field {
+	return Field{Key: key, Value: value}
+}
+
 // Error creates an error field
 func Error(err error) Field {
 	return Field{Key: "error", Value: err.Error()}

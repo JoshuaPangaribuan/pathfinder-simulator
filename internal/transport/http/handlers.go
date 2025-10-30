@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 
+	"github.com/JoshuaPangaribuan/pathfinder/internal/lib/log"
 	"github.com/JoshuaPangaribuan/pathfinder/internal/maze"
 	"github.com/JoshuaPangaribuan/pathfinder/internal/service"
 )
@@ -16,13 +17,15 @@ import (
 type Handler struct {
 	mazeService    service.MazeServiceInterface
 	simService     service.SimulationServiceInterface
+	logger         log.Logger
 }
 
 // NewHandler constructs a handler instance with dependencies.
-func NewHandler(mazeService service.MazeServiceInterface, simService service.SimulationServiceInterface) *Handler {
+func NewHandler(mazeService service.MazeServiceInterface, simService service.SimulationServiceInterface, logger log.Logger) *Handler {
 	return &Handler{
 		mazeService: mazeService,
 		simService:  simService,
+		logger:      logger,
 	}
 }
 
@@ -61,8 +64,13 @@ func (h *Handler) Register(r *gin.Engine) {
 
 // GenerateMaze handles POST /maze/generate.
 func (h *Handler) GenerateMaze(c *gin.Context) {
+	ctx := c.Request.Context()
+	
 	var req generateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn(ctx, "maze generation request validation failed",
+			log.Error(err),
+		)
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error":   "validation failed",
@@ -74,24 +82,39 @@ func (h *Handler) GenerateMaze(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
+	h.logger.Info(ctx, "maze generation request received",
+		log.Int("width", req.Width),
+		log.Int("height", req.Height),
+	)
+
 	result, err := h.mazeService.GenerateMaze(ctx, service.GenerateMazeRequest{
 		Width:  req.Width,
 		Height: req.Height,
 		Seed:   req.Seed,
 	})
 	if err != nil {
+		h.logger.Error(ctx, "maze generation handler error", err)
 		h.handleError(c, err)
 		return
 	}
+
+	h.logger.Info(ctx, "maze generation response sent",
+		log.Int("width", result.Width),
+		log.Int("height", result.Height),
+	)
 
 	c.JSON(http.StatusOK, result)
 }
 
 // Simulate handles POST /simulate.
 func (h *Handler) Simulate(c *gin.Context) {
+	ctx := c.Request.Context()
+	
 	var req simulateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		h.logger.Warn(ctx, "simulation request validation failed",
+			log.Error(err),
+		)
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error":   "validation failed",
@@ -103,7 +126,11 @@ func (h *Handler) Simulate(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
+	h.logger.Info(ctx, "simulation request received",
+		log.String("algorithm", req.Algorithm),
+		log.Int("grid_height", len(req.Grid)),
+	)
+
 	simResult, err := h.simService.RunSimulation(ctx, service.RunSimulationRequest{
 		Algorithm: req.Algorithm,
 		Grid:      req.Grid,
@@ -111,12 +138,14 @@ func (h *Handler) Simulate(c *gin.Context) {
 		Goal:      req.Goal,
 	})
 	if err != nil {
+		h.logger.Error(ctx, "simulation handler error", err)
 		h.handleError(c, err)
 		return
 	}
 
 	result := simResult.Result
 	if result == nil {
+		h.logger.Error(ctx, "simulation returned no result", fmt.Errorf("simulation returned nil result"))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "simulation returned no result"})
 		return
 	}
@@ -138,6 +167,12 @@ func (h *Handler) Simulate(c *gin.Context) {
 	if !result.Found {
 		status = http.StatusUnprocessableEntity
 	}
+
+	h.logger.Info(ctx, "simulation response sent",
+		log.String("algorithm", req.Algorithm),
+		log.Int("status", status),
+		log.Bool("found", result.Found),
+	)
 
 	c.JSON(status, resp)
 }

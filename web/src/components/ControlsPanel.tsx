@@ -1,9 +1,9 @@
-import axios from "axios";
-import { useCallback, useMemo, useState, useEffect, type ChangeEvent } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 
-import { generateMaze, simulate } from "@/api";
+import { MazeGenerator, AlgorithmSelector, CellSelector } from "@/components/controls";
+import { useMazeService, useSimulationService } from "@/hooks";
 import { useAppStore } from "@/store/useAppStore";
-import type { Algorithm, GenerateMazeRequest } from "@/types";
+import type { GenerateMazeRequest } from "@/types";
 
 type SelectionMode = "start" | "goal";
 
@@ -14,18 +14,10 @@ interface ControlsPanelProps {
   onRunComplete?: (success: boolean) => void;
 }
 
-const algorithmLabel: Record<Algorithm, string> = {
-  bfs: "Breadth-First Search",
-  dfs: "Depth-First Search",
-  astar: "A* Search",
-};
-
 const defaultDimensions: GenerateMazeRequest = {
   width: 31,
   height: 21,
 };
-
-const MIN_DIMENSION = 5;
 
 // Calculate maximum maze dimensions based on screen size
 const getMaxDimensions = () => {
@@ -48,27 +40,6 @@ const getMaxDimensions = () => {
   };
 };
 
-const extractError = (error: unknown) => {
-  if (axios.isAxiosError(error)) {
-    const responseMessage = error.response?.data as { error?: string } | undefined;
-    return responseMessage?.error ?? error.message;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Unexpected error";
-};
-
-const validateDimension = (value: number, max: number): number => {
-  if (isNaN(value) || value < MIN_DIMENSION) {
-    return MIN_DIMENSION;
-  }
-  if (value > max) {
-    return max;
-  }
-  return value;
-};
-
 export const ControlsPanel = ({
   selectionMode,
   onSelectionModeChange,
@@ -79,18 +50,17 @@ export const ControlsPanel = ({
   const start = useAppStore((state) => state.start);
   const goal = useAppStore((state) => state.goal);
   const algorithm = useAppStore((state) => state.algorithm);
-  const animationSpeed = useAppStore((state) => state.animationSpeed);
-  const setMaze = useAppStore((state) => state.setMaze);
-  const setAlgorithm = useAppStore((state) => state.setAlgorithm);
-  const setSimulationResult = useAppStore((state) => state.setSimulationResult);
-  const setAnimationSpeed = useAppStore((state) => state.setAnimationSpeed);
   const resetSimulation = useAppStore((state) => state.resetSimulation);
+
+  const { generateMaze, isGenerating, error: mazeError } = useMazeService();
+  const { runSimulation, isRunning, error: simError } = useSimulationService();
 
   const [width, setWidth] = useState<number>(defaultDimensions.width);
   const [height, setHeight] = useState<number>(defaultDimensions.height);
   const [seed, setSeed] = useState<string>("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const [maxDimensions, setMaxDimensions] = useState(getMaxDimensions);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Update max dimensions when window resizes
   useEffect(() => {
@@ -101,9 +71,6 @@ export const ControlsPanel = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-  const [isRunning, setIsRunning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const canRun = useMemo(() => {
     if (!maze || !start || !goal) {
@@ -136,16 +103,13 @@ export const ControlsPanel = ({
     }
 
     try {
-      setIsGenerating(true);
-      const mazeResponse = await generateMaze(payload);
-      setMaze(mazeResponse);
+      await generateMaze(payload);
       setSuccessMessage("Maze generated successfully");
     } catch (err) {
-      setError(extractError(err));
-    } finally {
-      setIsGenerating(false);
+      // Error already handled in service hook
+      setError(mazeError);
     }
-  }, [height, isGenerating, seed, setMaze, width]);
+  }, [height, isGenerating, seed, width, generateMaze, mazeError]);
 
   const handleRun = useCallback(async () => {
     if (!maze || !start || !goal) {
@@ -166,45 +130,31 @@ export const ControlsPanel = ({
     onRunStart?.();
 
     try {
-      setIsRunning(true);
-      const response = await simulate({
+      await runSimulation({
         algorithm,
         grid: maze,
         start,
         goal,
       });
-      setSimulationResult(algorithm, response);
-      setSuccessMessage(
-        response.found ? "Pathfinding complete" : "No path found for the selected maze",
-      );
-      onRunComplete?.(response.found);
+      // Access the result from store after simulation completes
+      const result = useAppStore.getState().resultsByAlgorithm[algorithm];
+      if (result) {
+        setSuccessMessage(
+          result.result.found ? "Pathfinding complete" : "No path found for the selected maze",
+        );
+        onRunComplete?.(result.result.found);
+      }
     } catch (err) {
-      setError(extractError(err));
+      // Error already handled in service hook
+      setError(simError);
       onRunComplete?.(false);
-    } finally {
-      setIsRunning(false);
     }
-  }, [algorithm, goal, isRunning, maze, onRunComplete, onRunStart, resetSimulation, setSimulationResult, start]);
-
-  const handleAlgorithmChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value as Algorithm;
-    setAlgorithm(value);
-  };
-
-  const handleAnimationSpeedChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
-    setAnimationSpeed(value);
-  };
-
-  const handleSelectionModeToggle = (mode: SelectionMode) => () => {
-    onSelectionModeChange(mode);
-  };
+  }, [algorithm, goal, isRunning, maze, onRunComplete, onRunStart, resetSimulation, runSimulation, simError, start]);
 
   return (
     <section className="flex flex-col gap-4">
       {/* Mobile: Collapsible sections */}
       <div className="block lg:hidden space-y-2">
-        {/* Maze Generation - Collapsible */}
         <details className="group rounded-xl border border-slate-800 bg-slate-950/70 shadow-lg">
           <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-100 hover:bg-slate-800/50 transition-colors list-none">
             <div className="flex items-center justify-between">
@@ -214,59 +164,22 @@ export const ControlsPanel = ({
               </svg>
             </div>
           </summary>
-          <div className="px-4 pb-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1 text-xs text-slate-300">
-                Width
-                <input
-                  type="number"
-                  min={MIN_DIMENSION}
-                  max={maxDimensions.width}
-                  value={width}
-                  onChange={(event) => {
-                    const validatedValue = validateDimension(Number(event.target.value), maxDimensions.width);
-                    setWidth(validatedValue);
-                  }}
-                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs text-slate-300">
-                Height
-                <input
-                  type="number"
-                  min={MIN_DIMENSION}
-                  max={maxDimensions.height}
-                  value={height}
-                  onChange={(event) => {
-                    const validatedValue = validateDimension(Number(event.target.value), maxDimensions.height);
-                    setHeight(validatedValue);
-                  }}
-                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-                />
-              </label>
-            </div>
-            <label className="flex flex-col gap-1 text-xs text-slate-300">
-              Seed (optional)
-              <input
-                type="text"
-                value={seed}
-                onChange={(event) => setSeed(event.target.value)}
-                placeholder="Random each time"
-                className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="w-full rounded-md bg-sky-500 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-            >
-              {isGenerating ? "Generating…" : "Generate Maze"}
-            </button>
+          <div className="px-4 pb-4">
+            <MazeGenerator
+              width={width}
+              height={height}
+              seed={seed}
+              maxWidth={maxDimensions.width}
+              maxHeight={maxDimensions.height}
+              onWidthChange={setWidth}
+              onHeightChange={setHeight}
+              onSeedChange={setSeed}
+              onGenerate={handleGenerate}
+              isGenerating={isGenerating}
+            />
           </div>
         </details>
 
-        {/* Algorithm Settings - Collapsible */}
         <details className="group rounded-xl border border-slate-800 bg-slate-950/70 shadow-lg">
           <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-100 hover:bg-slate-800/50 transition-colors list-none">
             <div className="flex items-center justify-between">
@@ -276,45 +189,19 @@ export const ControlsPanel = ({
               </svg>
             </div>
           </summary>
-          <div className="px-4 pb-4 space-y-4">
-            <label className="flex flex-col gap-2 text-sm text-slate-300">
-              Algorithm
-              <select
-                value={algorithm}
-                onChange={handleAlgorithmChange}
-                className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-              >
-                {Object.entries(algorithmLabel).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex flex-col gap-2">
-              <span className="text-sm text-slate-300">Animation Speed ({animationSpeed} ms)</span>
-              <input
-                type="range"
-                min={5}
-                max={400}
-                step={5}
-                value={animationSpeed}
-                onChange={handleAnimationSpeedChange}
-                className="accent-sky-500"
-              />
-            </div>
+          <div className="px-4 pb-4">
+            <AlgorithmSelector />
             <button
               type="button"
               onClick={handleRun}
               disabled={!canRun || isRunning}
-              className="w-full rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+              className="mt-4 w-full rounded-md bg-emerald-500 px-3 py-2 text-xs font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
             >
               {isRunning ? "Running…" : "Run Pathfinding"}
             </button>
           </div>
         </details>
 
-        {/* Cell Selection - Collapsible */}
         <details className="group rounded-xl border border-slate-800 bg-slate-950/70 shadow-lg">
           <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-100 hover:bg-slate-800/50 transition-colors list-none">
             <div className="flex items-center justify-between">
@@ -324,36 +211,11 @@ export const ControlsPanel = ({
               </svg>
             </div>
           </summary>
-          <div className="px-4 pb-4 space-y-3">
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleSelectionModeToggle("start")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-medium ${
-                    selectionMode === "start"
-                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                      : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-                  }`}
-                >
-                  Set Start
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSelectionModeToggle("goal")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-xs font-medium ${
-                    selectionMode === "goal"
-                      ? "border-rose-500 bg-rose-500/10 text-rose-300"
-                      : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-                  }`}
-                >
-                  Set Goal
-                </button>
-              </div>
-              <div className="text-center text-xs text-slate-400">
-                Start: {start ? `(${start.x}, ${start.y})` : "--"} | Goal: {goal ? `(${goal.x}, ${goal.y})` : "--"}
-              </div>
-            </div>
+          <div className="px-4 pb-4">
+            <CellSelector
+              selectionMode={selectionMode}
+              onSelectionModeChange={onSelectionModeChange}
+            />
           </div>
         </details>
       </div>
@@ -365,140 +227,50 @@ export const ControlsPanel = ({
           <p className="text-sm text-slate-400">Generate a perfect maze and configure the simulation.</p>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Width (cells)
-            <input
-              type="number"
-              min={MIN_DIMENSION}
-              max={maxDimensions.width}
-              value={width}
-              onChange={(event) => {
-                const validatedValue = validateDimension(Number(event.target.value), maxDimensions.width);
-                setWidth(validatedValue);
-              }}
-              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-            />
-            <span className="text-xs text-slate-500">Max: {maxDimensions.width}</span>
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Height (cells)
-            <input
-              type="number"
-              min={MIN_DIMENSION}
-              max={maxDimensions.height}
-              value={height}
-              onChange={(event) => {
-                const validatedValue = validateDimension(Number(event.target.value), maxDimensions.height);
-                setHeight(validatedValue);
-              }}
-              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-            />
-            <span className="text-xs text-slate-500">Max: {maxDimensions.height}</span>
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Seed (optional)
-            <input
-              type="text"
-              value={seed}
-              onChange={(event) => setSeed(event.target.value)}
-              placeholder="Random each time"
-              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-            />
-          </label>
-          <label className="flex flex-col gap-2 text-sm text-slate-300">
-            Algorithm
-            <select
-              value={algorithm}
-              onChange={handleAlgorithmChange}
-              className="rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-slate-100 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-500/20"
-            >
-              {Object.entries(algorithmLabel).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3">
-          <span className="text-sm text-slate-300">Animation Speed ({animationSpeed} ms)</span>
-          <input
-            type="range"
-            min={5}
-            max={400}
-            step={5}
-            value={animationSpeed}
-            onChange={handleAnimationSpeedChange}
-            className="accent-sky-500"
+        <div className="mt-6 space-y-6">
+          <MazeGenerator
+            width={width}
+            height={height}
+            seed={seed}
+            maxWidth={maxDimensions.width}
+            maxHeight={maxDimensions.height}
+            onWidthChange={setWidth}
+            onHeightChange={setHeight}
+            onSeedChange={setSeed}
+            onGenerate={handleGenerate}
+            isGenerating={isGenerating}
           />
-        </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleSelectionModeToggle("start")}
-            className={`rounded-md border px-4 py-2 text-sm font-medium ${
-              selectionMode === "start"
-                ? "border-emerald-500 bg-emerald-500/10 text-emerald-300"
-                : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-            }`}
-          >
-            Set Start
-          </button>
-          <button
-            type="button"
-            onClick={handleSelectionModeToggle("goal")}
-            className={`rounded-md border px-4 py-2 text-sm font-medium ${
-              selectionMode === "goal"
-                ? "border-rose-500 bg-rose-500/10 text-rose-300"
-                : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"
-            }`}
-          >
-            Set Goal
-          </button>
-          <div className="ml-auto flex flex-wrap items-center gap-2 text-xs text-slate-400">
-            <span>
-              Start: {start ? `(${start.x}, ${start.y})` : "--"}
-            </span>
-            <span className="text-slate-600">|</span>
-            <span>
-              Goal: {goal ? `(${goal.x}, ${goal.y})` : "--"}
-            </span>
+          <AlgorithmSelector />
+
+          <CellSelector
+            selectionMode={selectionMode}
+            onSelectionModeChange={onSelectionModeChange}
+          />
+
+          <div className="w-full">
+            <button
+              type="button"
+              onClick={handleRun}
+              disabled={!canRun || isRunning}
+              className="w-full rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+            >
+              {isRunning ? "Running…" : "Run Pathfinding"}
+            </button>
           </div>
-        </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <button
-            type="button"
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="rounded-md bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-          >
-            {isGenerating ? "Generating…" : "Generate Maze"}
-          </button>
-          <button
-            type="button"
-            onClick={handleRun}
-            disabled={!canRun || isRunning}
-            className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-          >
-            {isRunning ? "Running…" : "Run Pathfinding"}
-          </button>
+          {(error || successMessage) && (
+            <div
+              className={`rounded-md border px-3 py-2 text-sm ${
+                error
+                  ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+              }`}
+            >
+              {error ?? successMessage}
+            </div>
+          )}
         </div>
-
-        {(error || successMessage) && (
-          <div
-            className={`mt-4 rounded-md border px-3 py-2 text-sm ${
-              error
-                ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
-                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-            }`}
-          >
-            {error ?? successMessage}
-          </div>
-        )}
       </div>
 
       {/* Status messages for mobile */}
@@ -518,4 +290,3 @@ export const ControlsPanel = ({
     </section>
   );
 };
-

@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/JoshuaPangaribuan/pathfinder/internal/maze"
+	applog "github.com/JoshuaPangaribuan/pathfinder/internal/lib/log"
 	"github.com/JoshuaPangaribuan/pathfinder/internal/service"
 	"github.com/JoshuaPangaribuan/pathfinder/internal/simulation"
 	httptransport "github.com/JoshuaPangaribuan/pathfinder/internal/transport/http"
@@ -54,16 +55,19 @@ func main() {
 }
 
 func setupDependencies() (*httptransport.Handler, error) {
+	// Initialize logger
+	logger := applog.NewLogger()
+
 	// Initialize core domain services
 	mazeGen := maze.NewGenerator()
 	simRunner := simulation.NewRunner()
 
 	// Initialize service layer
-	mazeService := service.NewMazeService(mazeGen)
-	simService := service.NewSimulationService(simRunner)
+	mazeService := service.NewMazeService(mazeGen, logger)
+	simService := service.NewSimulationService(simRunner, logger)
 
 	// Initialize handlers with services
-	handler := httptransport.NewHandler(mazeService, simService)
+	handler := httptransport.NewHandler(mazeService, simService, logger)
 
 	return handler, nil
 }
