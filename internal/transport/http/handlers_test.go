@@ -4,18 +4,20 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"errors"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/JoshuaPangaribuan/pathfinder/internal/algorithm"
+	"github.com/JoshuaPangaribuan/pathfinder/internal/lib/log"
 	"github.com/JoshuaPangaribuan/pathfinder/internal/maze"
 	"github.com/JoshuaPangaribuan/pathfinder/internal/service"
 	"github.com/JoshuaPangaribuan/pathfinder/internal/transport/http/mocks"
-	"github.com/stretchr/testify/assert"
 )
 
 func setupTestRouter(handler *Handler) *gin.Engine {
@@ -28,7 +30,8 @@ func setupTestRouter(handler *Handler) *gin.Engine {
 func TestHandler_GenerateMaze_Success(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	ctx := context.Background()
 	expectedResult := maze.GenerateResult{
@@ -67,7 +70,8 @@ func TestHandler_GenerateMaze_Success(t *testing.T) {
 func TestHandler_GenerateMaze_ValidationError(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	router := setupTestRouter(handler)
 
@@ -89,7 +93,8 @@ func TestHandler_GenerateMaze_ValidationError(t *testing.T) {
 func TestHandler_GenerateMaze_InvalidDimensions(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	// Note: Validation happens before calling the generator,
 	// so invalid dimensions (< 2) are caught by validation
@@ -114,7 +119,8 @@ func TestHandler_GenerateMaze_InvalidDimensions(t *testing.T) {
 func TestHandler_Simulate_Success(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	ctx := context.Background()
 	grid := createTestGrid(5, 5, nil)
@@ -161,7 +167,8 @@ func TestHandler_Simulate_Success(t *testing.T) {
 func TestHandler_Simulate_NoPath(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	ctx := context.Background()
 	grid := createTestGrid(3, 3, nil)
@@ -208,7 +215,8 @@ func TestHandler_Simulate_NoPath(t *testing.T) {
 func TestHandler_Simulate_ValidationError(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	router := setupTestRouter(handler)
 
@@ -232,7 +240,8 @@ func TestHandler_Simulate_ValidationError(t *testing.T) {
 func TestHandler_Simulate_UnknownAlgorithm(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	// Note: Handler calls service, and service validates algorithm name
 	ctx := context.Background()
@@ -266,7 +275,8 @@ func TestHandler_Simulate_UnknownAlgorithm(t *testing.T) {
 func TestHandler_Simulate_OutOfBounds(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	ctx := context.Background()
 	grid := createTestGrid(5, 5, nil)
@@ -302,7 +312,8 @@ func TestHandler_Simulate_OutOfBounds(t *testing.T) {
 func TestHandler_Simulate_Blocked(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	ctx := context.Background()
 	grid := createTestGrid(5, 5, nil)
@@ -338,7 +349,8 @@ func TestHandler_Simulate_Blocked(t *testing.T) {
 func TestHandler_Health(t *testing.T) {
 	mockMazeService := new(mocks.MockMazeService)
 	mockSimService := new(mocks.MockSimulationService)
-	handler := NewHandler(mockMazeService, mockSimService)
+	logger := log.NewNoOpLogger()
+	handler := NewHandler(mockMazeService, mockSimService, logger)
 
 	router := setupTestRouter(handler)
 
@@ -368,4 +380,3 @@ func createTestGrid(width, height int, walls []maze.Point) maze.Grid {
 	}
 	return grid
 }
-
