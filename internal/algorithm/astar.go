@@ -2,11 +2,14 @@ package algorithm
 
 import (
 	"container/heap"
+	"math"
 
 	"github.com/JoshuaPangaribuan/pathfinder/internal/maze"
 )
 
-// AStar performs A* search using Manhattan distance heuristic.
+// AStar performs A* search on the given grid from start to goal.
+// Uses Manhattan distance as the heuristic, guaranteeing the shortest path in an unweighted grid.
+// Returns a Result with path information and visited order.
 func AStar(grid maze.Grid, start, goal maze.Point) (*Result, error) {
 	if !inBounds(grid, start) || !inBounds(grid, goal) {
 		return nil, ErrOutOfBounds
@@ -20,7 +23,7 @@ func AStar(grid maze.Grid, start, goal maze.Point) (*Result, error) {
 
 	gScore := map[maze.Point]float64{start: 0}
 	parents := make(map[maze.Point]maze.Point)
-	visitedOrder := make([]maze.Point, 0)
+	visitedOrder := make([]maze.Point, 0, len(grid)*len(grid[0]))
 	closed := make(map[maze.Point]bool)
 
 	var found bool
@@ -80,14 +83,7 @@ func AStar(grid maze.Grid, start, goal maze.Point) (*Result, error) {
 }
 
 func heuristic(a, b maze.Point) float64 {
-	dx := float64(abs(a.X - b.X))
-	dy := float64(abs(a.Y - b.Y))
+	dx := math.Abs(float64(a.X - b.X))
+	dy := math.Abs(float64(a.Y - b.Y))
 	return dx + dy
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

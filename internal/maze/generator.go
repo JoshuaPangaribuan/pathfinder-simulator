@@ -17,7 +17,7 @@ type Generator interface {
 	Generate(ctx context.Context, width, height int, seed *int64) (GenerateResult, error)
 }
 
-// DefaultGenerator implements Generator using recursive backtracker
+// DefaultGenerator implements Generator using iterative backtracker
 type DefaultGenerator struct {
 	// Future: can add logger, metrics, etc.
 }
@@ -32,7 +32,7 @@ type cell struct {
 	y int
 }
 
-// Generate constructs a perfect maze using the Recursive Backtracker algorithm.
+// Generate constructs a perfect maze using the Iterative Backtracker algorithm.
 // The resulting grid has dimensions (height*2+1) x (width*2+1) to encode walls
 // and passages explicitly. If seed is nil, the generator uses the current time.
 func (g *DefaultGenerator) Generate(ctx context.Context, width, height int, seed *int64) (GenerateResult, error) {

@@ -2,7 +2,9 @@ package algorithm
 
 import "github.com/JoshuaPangaribuan/pathfinder/internal/maze"
 
-// BFS performs breadth-first search on the given grid.
+// BFS performs breadth-first search on the given grid from start to goal.
+// It explores nodes level by level, guaranteeing the shortest path in an unweighted grid.
+// Returns a Result with path information and visited order, or an error if start/goal are invalid.
 func BFS(grid maze.Grid, start, goal maze.Point) (*Result, error) {
 	if !inBounds(grid, start) || !inBounds(grid, goal) {
 		return nil, ErrOutOfBounds
@@ -14,7 +16,7 @@ func BFS(grid maze.Grid, start, goal maze.Point) (*Result, error) {
 	queue := []maze.Point{start}
 	visited := map[maze.Point]bool{start: true}
 	parents := make(map[maze.Point]maze.Point)
-	visitedOrder := make([]maze.Point, 0)
+	visitedOrder := make([]maze.Point, 0, len(grid)*len(grid[0]))
 
 	var found bool
 

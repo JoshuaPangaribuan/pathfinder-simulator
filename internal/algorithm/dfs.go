@@ -2,7 +2,9 @@ package algorithm
 
 import "github.com/JoshuaPangaribuan/pathfinder/internal/maze"
 
-// DFS performs depth-first search using an explicit stack.
+// DFS performs depth-first search on the given grid from start to goal.
+// It explores as far as possible along each branch before backtracking.
+// Does not guarantee the shortest path. Returns a Result with path information and visited order.
 func DFS(grid maze.Grid, start, goal maze.Point) (*Result, error) {
 	if !inBounds(grid, start) || !inBounds(grid, goal) {
 		return nil, ErrOutOfBounds
@@ -14,7 +16,7 @@ func DFS(grid maze.Grid, start, goal maze.Point) (*Result, error) {
 	stack := []maze.Point{start}
 	visited := map[maze.Point]bool{start: true}
 	parents := make(map[maze.Point]maze.Point)
-	visitedOrder := make([]maze.Point, 0)
+	visitedOrder := make([]maze.Point, 0, len(grid)*len(grid[0]))
 
 	var found bool
 
