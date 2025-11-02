@@ -1,9 +1,9 @@
-FROM node:20.18-alpine AS frontend
+FROM oven/bun:alpine AS frontend
 WORKDIR /app/web
 COPY web/package*.json ./
-RUN npm ci && npm cache clean --force
+RUN bun install --frozen-lockfile
 COPY web/ ./
-RUN npm run build
+RUN bun run build
 
 FROM golang:1.25-alpine AS backend
 WORKDIR /app

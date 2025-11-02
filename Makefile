@@ -21,14 +21,14 @@ help: ## Show this help message
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 # Dependencies
-deps: deps-go deps-web ## Install all dependencies (Go and Node.js)
+deps: deps-go deps-web ## Install all dependencies (Go and Bun)
 
 deps-go: ## Install Go dependencies
 	go mod download
 	go mod tidy
 
-deps-web: ## Install Node.js dependencies
-	cd $(WEB_DIR) && npm install
+deps-web: ## Install Bun dependencies
+	cd $(WEB_DIR) && bun install
 
 # Setup targets
 setup: deps ## Setup project for development (install all dependencies)
@@ -46,7 +46,7 @@ quick-start: setup ## Quick start development (setup + start dev servers in back
 build: build-web build-server ## Build both frontend and backend for production
 
 build-web: ## Build frontend production bundle
-	cd $(WEB_DIR) && npm run build
+	cd $(WEB_DIR) && bun run build
 
 build-server: embed ## Build Go server binary with embedded assets
 	go build -o $(BINARY_PATH) ./cmd/server
@@ -83,7 +83,7 @@ dev-server: ## Run Go API server in development mode
 	go run ./cmd/server -dev -addr :$(API_PORT)
 
 dev-web: ## Run Vite development server
-	cd $(WEB_DIR) && npm run dev
+	cd $(WEB_DIR) && bun run dev
 
 # Test targets
 test: test-go ## Run all tests
@@ -92,7 +92,7 @@ test-go: ## Run Go tests
 	go test ./...
 
 test-web: ## Run frontend tests (if configured)
-	cd $(WEB_DIR) && npm test
+	cd $(WEB_DIR) && bun test
 
 # Code quality
 lint: lint-go lint-web ## Run all linters
@@ -106,7 +106,7 @@ lint-go: ## Run Go linter
 	fi
 
 lint-web: ## Run frontend linter
-	cd $(WEB_DIR) && npm run lint
+	cd $(WEB_DIR) && bun run lint
 
 fmt: fmt-go fmt-web ## Format all code
 
@@ -114,7 +114,7 @@ fmt-go: ## Format Go code
 	go fmt ./...
 
 fmt-web: ## Format frontend code
-	cd $(WEB_DIR) && npx prettier --write "src/**/*.{ts,tsx,js,jsx,json,css,md}"
+	cd $(WEB_DIR) && bun fmt --write .
 
 # Clean targets
 clean: clean-web clean-server ## Clean all build artifacts
@@ -122,6 +122,7 @@ clean: clean-web clean-server ## Clean all build artifacts
 clean-web: ## Clean frontend build artifacts
 	rm -rf $(WEB_DIR)/dist
 	rm -rf $(WEB_DIR)/node_modules
+	rm -f $(WEB_DIR)/bun.lockb
 
 clean-server: ## Clean Go build artifacts
 	rm -rf bin/
@@ -138,6 +139,7 @@ kill-be: ## Kill backend (Go server) processes
 kill-fe: ## Kill frontend (Vite dev server) processes
 	@echo "Killing frontend processes..."
 	@-pkill -f "vite" 2>/dev/null || true
+	@-pkill -f "bun.*dev" 2>/dev/null || true
 	@-pkill -f "npm.*dev" 2>/dev/null || true
 	@-pkill -f "node.*vite" 2>/dev/null || true
 	@-lsof -ti:$(WEB_PORT) | xargs kill -9 2>/dev/null || true

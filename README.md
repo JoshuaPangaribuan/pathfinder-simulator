@@ -14,7 +14,7 @@ An interactive playground for generating perfect mazes and visualising classical
 
 ### Prerequisites
 - Go 1.22 or newer
-- Node.js 20+ and npm 10+
+- Bun 1.0 or newer
 
 ### Get Started in 3 Steps
 
@@ -79,14 +79,14 @@ web/                       # Frontend source (React + Vite)
 ## Prerequisites
 
 - Go 1.22 or newer
-- Node.js 20+ and npm 10+
+- Bun 1.0 or newer
 
 ## Makefile Commands
 
 This project uses a comprehensive Makefile for all development tasks. Here are the most useful commands:
 
 ### Development
-- `make setup` - Install all dependencies (Go + Node.js)
+- `make setup` - Install all dependencies (Go + Bun)
 - `make quick-start` - Setup and start both dev servers automatically
 - `make dev-server` - Start Go API server only
 - `make dev-web` - Start Vite dev server only

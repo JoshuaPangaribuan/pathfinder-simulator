@@ -276,16 +276,16 @@ This ensures type safety across the entire application and prevents runtime erro
 ### Running Locally
 ```bash
 # Install dependencies
-npm install
+bun install
 
 # Start dev server (proxies to backend on :8080)
-npm run dev
+bun run dev
 
 # Build for production
-npm run build
+bun run build
 
 # Preview production build
-npm run preview
+bun run preview
 ```
 
 ### Code Organization Principles
